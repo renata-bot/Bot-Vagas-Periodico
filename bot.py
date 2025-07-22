@@ -58,6 +58,8 @@ def verificar_novas_vagas():
         enviar_mensagem(mensagem)
         salvar_estado_atual(vagas_atuais)
     else:
+        mensagem = 'ℹ️ Nenhuma nova vaga remota detectada no Boticário.'
+        enviar_mensagem(mensagem)
         print('Nenhuma nova vaga encontrada.')
 
 if __name__ == '__main__':
