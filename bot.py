@@ -62,8 +62,15 @@ def buscar_vagas_remotas():
 
 def carregar_historico():
     if os.path.exists(HISTORICO_PATH):
-        with open(HISTORICO_PATH, "r", encoding="utf-8") as f:
-            return set(json.load(f))
+        try:
+            with open(HISTORICO_PATH, "r", encoding="utf-8") as f:
+                data = f.read().strip()
+                if not data:
+                    return set()
+                return set(json.loads(data))
+        except (json.JSONDecodeError, ValueError) as e:
+            print(f"⚠️ Erro ao ler histórico. Ignorando conteúdo inválido: {e}")
+            return set()
     return set()
 
 def salvar_historico(vagas):
