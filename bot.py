@@ -1,5 +1,4 @@
 import requests
-import json
 import os
 from datetime import datetime
 from telegram import Bot
@@ -7,7 +6,6 @@ from telegram import Bot
 # === CONFIGURAÇÕES ===
 TOKEN = os.getenv('TELEGRAM_TOKEN')
 CHAT_ID = os.getenv('CHAT_ID')
-ESTADO_PATH = 'ultimo_estado.txt'
 
 URLS = [
     "https://portal.api.gupy.io/api/v1/jobs?careerPageName=Grupo%20Botic%C3%A1rio&jobName=vaga&limit=100&offset=0&workplaceType=remote",
@@ -46,14 +44,6 @@ def enviar_mensagem(mensagem):
     if resposta:
         print("✅ Mensagem enviada com status 200")
 
-def salvar_estado_atual(vagas_atuais):
-    try:
-        with open(ESTADO_PATH, 'w', encoding='utf-8') as f:
-            json.dump(list(vagas_atuais), f, ensure_ascii=False, indent=2)
-        print(f"📁 Estado salvo com {len(vagas_atuais)} vagas.")
-    except Exception as e:
-        print(f"❌ Erro ao salvar arquivo de estado: {e}")
-
 def main():
     enviar_mensagem("🤖 Bot iniciado e listando vagas remotas do Grupo Boticário...")
 
@@ -70,8 +60,6 @@ def main():
         enviar_mensagem(mensagem)
     else:
         enviar_mensagem("ℹ️ Nenhuma vaga remota encontrada no momento.")
-
-    salvar_estado_atual(vagas_atuais)
 
 if __name__ == "__main__":
     main()
