@@ -21,18 +21,18 @@ URLS = [
     "https://portal.api.gupy.io/api/v1/jobs?careerPageName=Grupo%20Botic%C3%A1rio&jobName=coordenadora&limit=100&offset=0&workplaceType=remote"
 ]
 
+HISTORICO_PATH = "historico_vagas.json"  # arquivo para armazenar histórico
+
 def pegar_titulo_vaga(url):
     try:
         resp = requests.get(url)
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, 'html.parser')
         
-        # Tentar pegar título do h1
         h1 = soup.find('h1')
         if h1 and h1.text.strip():
             return h1.text.strip()
         
-        # Se não encontrar, tentar pegar o título da tag <title>
         title_tag = soup.find('title')
         if title_tag and title_tag.text.strip():
             return title_tag.text.strip().split('|')[0].strip()
@@ -66,28 +66,49 @@ def buscar_vagas_remotas():
             print(f"❌ Erro ao buscar vagas em {url}: {e}")
     return vagas_encontradas
 
+def carregar_historico():
+    if os.path.exists(HISTORICO_PATH):
+        with open(HISTORICO_PATH, "r", encoding="utf-8") as f:
+            return set(json.load(f))
+    return set()
+
+def salvar_historico(vagas):
+    with open(HISTORICO_PATH, "w", encoding="utf-8") as f:
+        json.dump(sorted(list(vagas)), f, ensure_ascii=False, indent=2)
+
 def enviar_mensagem(mensagem):
     bot = Bot(token=TOKEN)
-    resposta = bot.send_message(chat_id=CHAT_ID, text=mensagem)
-    if resposta:
-        print("✅ Mensagem enviada com status 200")
+    MAX_LENGTH = 4000
+    for i in range(0, len(mensagem), MAX_LENGTH):
+        parte = mensagem[i:i+MAX_LENGTH]
+        bot.send_message(chat_id=CHAT_ID, text=parte)
+    print("✅ Mensagem enviada com status 200")
 
 def main():
     enviar_mensagem("🤖 Bot iniciado e listando vagas remotas do Grupo Boticário...")
 
     vagas_atuais = buscar_vagas_remotas()
+    historico = carregar_historico()
 
-    print(f"\n📋 Total de vagas encontradas: {len(vagas_atuais)}")
-    for vaga in sorted(vagas_atuais):
-        print(f"🔹 {vaga}")
+    print(f"\n📋 Total de vagas encontradas agora: {len(vagas_atuais)}")
+    print(f"📂 Vagas no histórico: {len(historico)}")
 
-    if vagas_atuais:
-        mensagem = f"📢 Vagas remotas no Grupo Boticário ({datetime.now().strftime('%d/%m %H:%M')}):\n\n"
-        for vaga in sorted(vagas_atuais):
+    # Vagas novas: no atual mas não no histórico
+    vagas_novas = vagas_atuais - historico
+
+    # Atualizar histórico: remove vagas que sumiram e adiciona as novas
+    historico_atualizado = (historico - (historico - vagas_atuais)) | vagas_novas
+    # ou simplesmente: historico_atualizado = vagas_atuais
+
+    salvar_historico(historico_atualizado)
+
+    if vagas_novas:
+        mensagem = f"📢 Novas vagas remotas no Grupo Boticário ({datetime.now().strftime('%d/%m %H:%M')}):\n\n"
+        for vaga in sorted(vagas_novas):
             mensagem += f"🔹 {vaga}\n"
         enviar_mensagem(mensagem)
     else:
-        enviar_mensagem("ℹ️ Nenhuma vaga remota encontrada no momento.")
+        print("ℹ️ Nenhuma vaga nova encontrada. Nada será enviado.")
 
 if __name__ == "__main__":
     main()
