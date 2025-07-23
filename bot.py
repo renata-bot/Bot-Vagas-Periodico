@@ -2,6 +2,7 @@ import requests
 import json
 import os
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from telegram import Bot
 from bs4 import BeautifulSoup
 
@@ -79,7 +80,7 @@ def salvar_historico(vagas):
 
 def enviar_mensagem(texto):
     bot = Bot(token=TOKEN)
-    max_len = 4000  # Limite seguro (máx é 4096)
+    max_len = 4000  # Limite seguro (máx 4096)
     partes = [texto[i:i+max_len] for i in range(0, len(texto), max_len)]
     for parte in partes:
         bot.send_message(chat_id=CHAT_ID, text=parte)
@@ -99,11 +100,16 @@ def main():
     print(f"✨ Novas vagas detectadas: {len(novas_vagas)}")
     print(f"❌ Vagas removidas: {len(vagas_removidas)}")
 
+    agora_str = datetime.now(ZoneInfo("America/Sao_Paulo")).strftime("%d/%m %H:%M")
+
     if novas_vagas:
-        mensagem = f"📢 Novas vagas remotas no Grupo Boticário ({datetime.now().strftime('%d/%m %H:%M')}):\n\n"
+        mensagem = f"📢 Novas vagas remotas no Grupo Boticário ({agora_str}):\n\n"
         for vaga in sorted(novas_vagas):
             mensagem += f"🔹 {vaga}\n"
-        enviar_mensagem(mensagem)
+    else:
+        mensagem = f"ℹ️ Sem novidades nas vagas remotas do Grupo Boticário ({agora_str}). Bot rodando normalmente."
+
+    enviar_mensagem(mensagem)
 
     salvar_historico(vagas_atuais)
 
