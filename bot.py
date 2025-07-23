@@ -1,15 +1,11 @@
 import os
-import time
 import requests
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 
 TELEGRAM_TOKEN = os.environ['TELEGRAM_TOKEN']
 CHAT_ID = os.environ['CHAT_ID']
 VAGAS_URL = 'https://grupoboticario.gupy.io/'
-ARQUIVO_ESTADO = 'ultimo_estado.txt'
+ARQUIVO_ESTADO = 'ultimo_estado.txt'  # Salvará localmente a lista de vagas
 
 def enviar_mensagem(texto):
     url = f'https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage'
@@ -34,38 +30,25 @@ def salvar_estado_atual(lista_vagas):
         f.write('\n'.join(lista_vagas))
 
 def buscar_vagas_remotas():
-    options = Options()
-    options.add_argument('--headless')
-    options.add_argument('--no-sandbox')
-    options.add_argument('--disable-dev-shm-usage')
+    resposta = requests.get(VAGAS_URL)
+    resposta.raise_for_status()
 
-    driver = webdriver.Chrome(options=options)
-    driver.get(VAGAS_URL)
-    time.sleep(3)
+    soup = BeautifulSoup(resposta.text, 'html.parser')
+    vagas_encontradas = []
 
-    vagas = []
+    todas_vagas = []
 
-    while True:
-        soup = BeautifulSoup(driver.page_source, 'html.parser')
-        for link in soup.find_all('a'):
-            href = link.get('href', '')
+    for link in soup.find_all('a'):
+        if isinstance(link, Tag) and link.has_attr('href'):
             titulo = link.get_text(strip=True)
-            if ('remoto' in titulo.lower() or 'home office' in titulo.lower()) and '/jobs/' in href:
-                vaga = f'{titulo} | https://grupoboticario.gupy.io{href}'
-                if vaga not in vagas:
-                    vagas.append(vaga)
+            todas_vagas.append(titulo)
+            if 'remoto' in titulo.lower() or 'home office' in titulo.lower():
+                vaga_formatada = f'{titulo} | https://grupoboticario.gupy.io{link["href"]}'
+                vagas_encontradas.append(vaga_formatada)
 
-        try:
-            botao_proxima = driver.find_element(By.XPATH, "//button[text()='>']")
-            if not botao_proxima.is_enabled():
-                break
-            botao_proxima.click()
-            time.sleep(2)
-        except:
-            break
-
-    driver.quit()
-    return vagas
+    print(f'Total vagas na página (antes do filtro): {len(todas_vagas)}')
+    print(f'Vagas remotas encontradas: {len(vagas_encontradas)}')
+    return vagas_encontradas
 
 def verificar_novas_vagas():
     vagas_atuais = buscar_vagas_remotas()
