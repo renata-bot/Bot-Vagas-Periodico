@@ -21,8 +21,6 @@ URLS = [
     "https://portal.api.gupy.io/api/v1/jobs?careerPageName=Grupo%20Botic%C3%A1rio&jobName=coordenadora&limit=100&offset=0&workplaceType=remote"
 ]
 
-# === FUNÇÕES ===
-
 def buscar_vagas_remotas():
     vagas_encontradas = set()
     for url in URLS:
@@ -42,52 +40,38 @@ def buscar_vagas_remotas():
             print(f"❌ Erro ao buscar vagas em {url}: {e}")
     return vagas_encontradas
 
-def salvar_estado_atual(vagas_atuais):
-    with open(ESTADO_PATH, 'w') as f:
-        json.dump(list(vagas_atuais), f)
-
-def carregar_estado_anterior():
-    if not os.path.exists(ESTADO_PATH):
-        print("⚠️ Arquivo de estado não encontrado. Criando novo histórico...")
-        return set()
-    try:
-        with open(ESTADO_PATH, 'r') as f:
-            conteudo = f.read().strip()
-            if not conteudo:
-                print("⚠️ Arquivo de estado está vazio.")
-                return set()
-            return set(json.loads(conteudo))
-    except Exception as e:
-        print(f"⚠️ Erro ao carregar estado anterior: {e}")
-        return set()
-        
 def enviar_mensagem(mensagem):
     bot = Bot(token=TOKEN)
     resposta = bot.send_message(chat_id=CHAT_ID, text=mensagem)
     if resposta:
         print("✅ Mensagem enviada com status 200")
 
+def salvar_estado_atual(vagas_atuais):
+    try:
+        with open(ESTADO_PATH, 'w', encoding='utf-8') as f:
+            json.dump(list(vagas_atuais), f, ensure_ascii=False, indent=2)
+        print(f"📁 Estado salvo com {len(vagas_atuais)} vagas.")
+    except Exception as e:
+        print(f"❌ Erro ao salvar arquivo de estado: {e}")
+
 def main():
-    enviar_mensagem("🤖 Bot iniciado e verificando novas vagas...")
+    enviar_mensagem("🤖 Bot iniciado e listando vagas remotas do Grupo Boticário...")
 
     vagas_atuais = buscar_vagas_remotas()
-    vagas_anteriores = carregar_estado_anterior()
 
-    novas_vagas = vagas_atuais - vagas_anteriores
+    print(f"\n📋 Total de vagas encontradas: {len(vagas_atuais)}")
+    for vaga in sorted(vagas_atuais):
+        print(f"🔹 {vaga}")
 
-    print(f"\n📋 Vagas atuais ({len(vagas_atuais)}): {sorted(vagas_atuais)}")
-    print(f"📂 Vagas anteriores ({len(vagas_anteriores)}): {sorted(vagas_anteriores)}")
-    print(f"✅ Total de vagas únicas encontradas: {len(vagas_atuais)}")
-    print(f"✅ Novas vagas detectadas: {len(novas_vagas)}\n")
-
-    if novas_vagas:
-        mensagem = f"📢 Novas vagas remotas no Grupo Boticário ({datetime.now().strftime('%d/%m %H:%M')}):\n\n"
-        for vaga in sorted(novas_vagas):
+    if vagas_atuais:
+        mensagem = f"📢 Vagas remotas no Grupo Boticário ({datetime.now().strftime('%d/%m %H:%M')}):\n\n"
+        for vaga in sorted(vagas_atuais):
             mensagem += f"🔹 {vaga}\n"
         enviar_mensagem(mensagem)
+    else:
+        enviar_mensagem("ℹ️ Nenhuma vaga remota encontrada no momento.")
 
     salvar_estado_atual(vagas_atuais)
 
-# === EXECUÇÃO ===
 if __name__ == "__main__":
     main()
