@@ -5,17 +5,16 @@ TELEGRAM_TOKEN = os.environ['TELEGRAM_TOKEN']
 CHAT_ID = os.environ['CHAT_ID']
 ARQUIVO_ESTADO = 'ultimo_estado.txt'
 
-# URLs para consultar, com paginação de offset 0 e 100 para exemplo
 URLS_BASE = [
-    'https://portal.api.gupy.io/api/v1/jobs?careerPageName=Grupo%20Botic%C3%A1rio&jobName=vaga&limit=100&offset={offset}&workplaceType=remote',
-    'https://portal.api.gupy.io/api/v1/jobs?careerPageName=Grupo%20Botic%C3%A1rio&jobName=analista&limit=100&offset={offset}&workplaceType=remote',
-    'https://portal.api.gupy.io/api/v1/jobs?careerPageName=Grupo%20Botic%C3%A1rio&jobName=pessoa&limit=100&offset={offset}&workplaceType=remote',
-    'https://portal.api.gupy.io/api/v1/jobs?careerPageName=Grupo%20Botic%C3%A1rio&jobName=especialista&limit=100&offset={offset}&workplaceType=remote',
-    'https://portal.api.gupy.io/api/v1/jobs?careerPageName=Grupo%20Botic%C3%A1rio&jobName=specialist&limit=100&offset={offset}&workplaceType=remote',
-    'https://portal.api.gupy.io/api/v1/jobs?careerPageName=Grupo%20Botic%C3%A1rio&jobName=product&limit=100&offset={offset}&workplaceType=remote',
-    'https://portal.api.gupy.io/api/v1/jobs?careerPageName=Grupo%20Botic%C3%A1rio&jobName=marketing&limit=100&offset={offset}&workplaceType=remote',
-    'https://portal.api.gupy.io/api/v1/jobs?careerPageName=Grupo%20Botic%C3%A1rio&jobName=gerente&limit=100&offset={offset}&workplaceType=remote',
-    'https://portal.api.gupy.io/api/v1/jobs?careerPageName=Grupo%20Botic%C3%A1rio&jobName=coordenadora&limit=100&offset={offset}&workplaceType=remote',
+    "https://portal.api.gupy.io/api/v1/jobs?careerPageName=Grupo%20Botic%C3%A1rio&jobName=vaga&limit=100&offset={offset}&workplaceType=remote",
+    "https://portal.api.gupy.io/api/v1/jobs?careerPageName=Grupo%20Botic%C3%A1rio&jobName=analista&limit=100&offset={offset}&workplaceType=remote",
+    "https://portal.api.gupy.io/api/v1/jobs?careerPageName=Grupo%20Botic%C3%A1rio&jobName=pessoa&limit=100&offset={offset}&workplaceType=remote",
+    "https://portal.api.gupy.io/api/v1/jobs?careerPageName=Grupo%20Botic%C3%A1rio&jobName=especialista&limit=100&offset={offset}&workplaceType=remote",
+    "https://portal.api.gupy.io/api/v1/jobs?careerPageName=Grupo%20Botic%C3%A1rio&jobName=specialist&limit=100&offset={offset}&workplaceType=remote",
+    "https://portal.api.gupy.io/api/v1/jobs?careerPageName=Grupo%20Botic%C3%A1rio&jobName=product&limit=100&offset={offset}&workplaceType=remote",
+    "https://portal.api.gupy.io/api/v1/jobs?careerPageName=Grupo%20Botic%C3%A1rio&jobName=marketing&limit=100&offset={offset}&workplaceType=remote",
+    "https://portal.api.gupy.io/api/v1/jobs?careerPageName=Grupo%20Botic%C3%A1rio&jobName=gerente&limit=100&offset={offset}&workplaceType=remote",
+    "https://portal.api.gupy.io/api/v1/jobs?careerPageName=Grupo%20Botic%C3%A1rio&jobName=coordenadora&limit=100&offset={offset}&workplaceType=remote"
 ]
 
 def enviar_mensagem(texto):
@@ -40,42 +39,39 @@ def salvar_estado_atual(lista_vagas):
     with open(ARQUIVO_ESTADO, 'w') as f:
         f.write('\n'.join(lista_vagas))
 
-def buscar_vagas_remotas():
+def buscar_vagas():
     vagas_encontradas = set()
-
-    # Para cada URL base, tentamos offset 0 e offset 100 (pode expandir para mais paginações se quiser)
-    offsets = [0, 100]
-
-    for base_url in URLS_BASE:
-        for offset in offsets:
-            url = base_url.format(offset=offset)
+    for url_base in URLS_BASE:
+        offset = 0
+        while True:
+            url = url_base.format(offset=offset)
             print(f'🔎 Consultando: {url}')
             try:
                 resposta = requests.get(url)
                 resposta.raise_for_status()
                 dados = resposta.json()
+                vagas = dados.get('data', [])
+                print(f'📌 {len(vagas)} vagas encontradas nesta página')
 
-                vagas_na_url = 0
-                for vaga in dados.get('data', []):
+                if not vagas:
+                    break
+
+                for vaga in vagas:
                     titulo = vaga.get('title', '').strip()
                     link = vaga.get('jobUrl', '').strip()
                     if titulo and link:
-                        vaga_formatada = f'{titulo} | {link}'
-                        vagas_encontradas.add(vaga_formatada)
-                        vagas_na_url += 1
-                print(f'📌 {vagas_na_url} vagas encontradas nesta URL')
+                        vagas_encontradas.add(f'{titulo} | {link}')
 
-                # Se achou menos que limit, provavelmente última página
-                if vagas_na_url < 100:
-                    break
-
+                if len(vagas) < 100:
+                    break  # última página
+                offset += 100
             except Exception as e:
-                print(f'❌ Erro ao buscar vagas em {url}: {e}')
-
+                print(f'❌ Erro na URL: {e}')
+                break
     return sorted(vagas_encontradas)
 
 def verificar_novas_vagas():
-    vagas_atuais = buscar_vagas_remotas()
+    vagas_atuais = buscar_vagas()
     print(f'Vagas atuais ({len(vagas_atuais)}): {vagas_atuais}')
 
     vagas_anteriores = carregar_estado_anterior()
@@ -92,8 +88,7 @@ def verificar_novas_vagas():
             mensagem += f'👉 {vaga}\n\n'
         enviar_mensagem(mensagem)
     else:
-        mensagem = 'ℹ️ Nenhuma nova vaga remota detectada no Boticário.'
-        enviar_mensagem(mensagem)
+        enviar_mensagem('ℹ️ Nenhuma nova vaga remota detectada no Boticário.')
 
     salvar_estado_atual(vagas_atuais)
 
