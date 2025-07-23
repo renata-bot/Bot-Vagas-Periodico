@@ -31,7 +31,9 @@ def buscar_vagas_remotas():
             print(f"📌 {len(vagas)} vagas encontradas nesta URL")
             for vaga in vagas:
                 titulo = vaga.get('title', '').strip()
-                link = vaga.get('jobUrl', '').strip()
+                link = vaga.get('jobUrl') or vaga.get('url') or ''
+                link = link.strip()
+                print(f"Debug vaga: title='{titulo}', link='{link}'")  # Debug para checar
                 if titulo and link:
                     vagas_encontradas.add(f"{titulo} | {link}")
         except Exception as e:
