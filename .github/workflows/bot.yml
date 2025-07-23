@@ -25,7 +25,7 @@ jobs:
       - name: Setup ChromeDriver
         uses: nanasess/setup-chromedriver@v1
         with:
-          chrome-version: 'latest'
+          chromedriver-version: 'latest'
 
       - name: Configurar Python
         uses: actions/setup-python@v4
