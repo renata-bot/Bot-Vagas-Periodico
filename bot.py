@@ -1,4 +1,5 @@
 import requests
+import json
 import os
 from datetime import datetime
 from telegram import Bot
@@ -25,12 +26,19 @@ def pegar_titulo_vaga(url):
         resp = requests.get(url)
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, 'html.parser')
-        h1 = soup.find('h1', class_='jumbotron__title')
-        if h1:
+        
+        # Tentar pegar título do h1
+        h1 = soup.find('h1')
+        if h1 and h1.text.strip():
             return h1.text.strip()
-        else:
-            print(f"⚠️ Título não encontrado na página: {url}")
-            return None
+        
+        # Se não encontrar, tentar pegar o título da tag <title>
+        title_tag = soup.find('title')
+        if title_tag and title_tag.text.strip():
+            return title_tag.text.strip().split('|')[0].strip()
+
+        print(f"⚠️ Título não encontrado na página: {url}")
+        return None
     except Exception as e:
         print(f"❌ Erro ao buscar título da vaga {url}: {e}")
         return None
@@ -47,10 +55,13 @@ def buscar_vagas_remotas():
             print(f"📌 {len(vagas)} vagas encontradas nesta URL")
             for vaga in vagas:
                 link = vaga.get('jobUrl', '').strip()
-                if link:
-                    titulo = pegar_titulo_vaga(link)
-                    if titulo:
-                        vagas_encontradas.add(f"{titulo} | {link}")
+                if not link:
+                    continue
+                titulo = pegar_titulo_vaga(link)
+                if titulo:
+                    vagas_encontradas.add(f"{titulo} | {link}")
+                else:
+                    print(f"⚠️ Título não encontrado na página: {link}")
         except Exception as e:
             print(f"❌ Erro ao buscar vagas em {url}: {e}")
     return vagas_encontradas
