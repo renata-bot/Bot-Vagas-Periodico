@@ -46,6 +46,21 @@ def salvar_estado_atual(vagas_atuais):
     with open(ESTADO_PATH, 'w') as f:
         json.dump(list(vagas_atuais), f)
 
+def carregar_estado_anterior():
+    if not os.path.exists(ESTADO_PATH):
+        print("⚠️ Arquivo de estado não encontrado. Criando novo histórico...")
+        return set()
+    try:
+        with open(ESTADO_PATH, 'r') as f:
+            conteudo = f.read().strip()
+            if not conteudo:
+                print("⚠️ Arquivo de estado está vazio.")
+                return set()
+            return set(json.loads(conteudo))
+    except Exception as e:
+        print(f"⚠️ Erro ao carregar estado anterior: {e}")
+        return set()
+        
 def enviar_mensagem(mensagem):
     bot = Bot(token=TOKEN)
     resposta = bot.send_message(chat_id=CHAT_ID, text=mensagem)
