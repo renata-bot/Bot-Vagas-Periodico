@@ -2,7 +2,7 @@ name: run-bot
 
 on:
   schedule:
-    - cron: '*/30 * * * *'  # roda a cada 30 minutos
+    - cron: '*/30 * * * *'  # a cada 30 minutos
   workflow_dispatch:
 
 jobs:
@@ -20,15 +20,11 @@ jobs:
           token: ${{ secrets.PAT_TOKEN }}
           persist-credentials: true
 
-      - name: Detectar versão do Google Chrome
-        id: chrome_version
-        run: |
-          echo "CHROME_VERSION=$(google-chrome --version | grep -oP '\\d+\\.\\d+\\.\\d+')" >> $GITHUB_ENV
+      - name: Instalar Chrome
+        uses: browser-actions/setup-chrome@v1
 
-      - name: Setup ChromeDriver
-        uses: nanasess/setup-chromedriver@v1
-        with:
-          chromedriver-version: ${{ env.CHROME_VERSION }}
+      - name: Instalar Chromedriver
+        uses: browser-actions/setup-chromedriver@v1
 
       - name: Configurar Python
         uses: actions/setup-python@v4
@@ -39,10 +35,12 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install selenium  # só se seu bot precisar de selenium
 
       - name: Rodar bot
         run: python bot.py
+
+      - name: Confirmar branch
+        run: git checkout main
 
       - name: Configurar Git para commit
         run: |
