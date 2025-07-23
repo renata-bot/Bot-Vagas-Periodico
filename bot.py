@@ -1,48 +1,70 @@
-name: run-bot
+import os
+import requests
+from bs4 import BeautifulSoup, Tag
 
-on:
-  schedule:
-    - cron: '*/30 * * * *'  # roda a cada 30 minutos
-  workflow_dispatch:
+TELEGRAM_TOKEN = os.environ['TELEGRAM_TOKEN']
+CHAT_ID = os.environ['CHAT_ID']
+VAGAS_URL = 'https://grupoboticario.gupy.io/'
+ARQUIVO_ESTADO = 'ultimo_estado.txt'  # Salvará localmente a lista de vagas
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
+def enviar_mensagem(texto):
+    url = f'https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage'
+    payload = {
+        'chat_id': CHAT_ID,
+        'text': texto,
+        'parse_mode': 'HTML'
+    }
+    response = requests.post(url, data=payload)
+    print(f'Mensagem enviada com status {response.status_code}')
+    print(response.text)
 
-    env:
-      TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-      CHAT_ID: ${{ secrets.CHAT_ID }}
+def carregar_estado_anterior():
+    try:
+        with open(ARQUIVO_ESTADO, 'r') as f:
+            return f.read().splitlines()
+    except FileNotFoundError:
+        return []
 
-    steps:
-      - name: Checkout código
-        uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.PAT_TOKEN }}
-          persist-credentials: true
+def salvar_estado_atual(lista_vagas):
+    with open(ARQUIVO_ESTADO, 'w') as f:
+        f.write('\n'.join(lista_vagas))
 
-      - name: Configurar Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.x'
+def buscar_vagas_remotas():
+    resposta = requests.get(VAGAS_URL)
+    resposta.raise_for_status()
 
-      - name: Instalar dependências
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+    soup = BeautifulSoup(resposta.text, 'html.parser')
+    vagas_encontradas = []
 
-      - name: Rodar bot
-        run: python bot.py
+    for link in soup.find_all('a'):
+        if isinstance(link, Tag) and link.has_attr('href'):
+            titulo = link.get_text(strip=True)
+            url = link['href']
+            if 'remoto' in titulo.lower() or 'home office' in titulo.lower():
+                vaga_formatada = f'{titulo} | https://grupoboticario.gupy.io{url}'
+                vagas_encontradas.append(vaga_formatada)
 
-      - name: Confirmar branch
-        run: git checkout main
+    return vagas_encontradas
 
-      - name: Configurar Git para commit
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+def verificar_novas_vagas():
+    vagas_atuais = buscar_vagas_remotas()
+    vagas_anteriores = carregar_estado_anterior()
+    novas_vagas = [vaga for vaga in vagas_atuais if vaga not in vagas_anteriores]
 
-      - name: Commit e push do histórico
-        run: |
-          git add ultimo_estado.txt
-          git commit -m "update estado" || echo "Sem alterações para commitar"
-          git push https://${{ secrets.PAT_TOKEN }}@github.com/renata-bot/Bot-Vagas-Periodico.git
+    if novas_vagas:
+        mensagem = '🚀 <b>Novas vagas remotas detectadas no Boticário:</b>\n\n'
+        for vaga in novas_vagas:
+            mensagem += f'👉 {vaga}\n\n'
+        enviar_mensagem(mensagem)
+        salvar_estado_atual(vagas_atuais)
+    else:
+        mensagem = 'ℹ️ Nenhuma nova vaga remota detectada no Boticário.'
+        enviar_mensagem(mensagem)
+        print('Nenhuma nova vaga encontrada.')
+
+if __name__ == '__main__':
+    enviar_mensagem('🤖 Bot iniciado e verificando novas vagas...')
+    try:
+        verificar_novas_vagas()
+    except Exception as e:
+        enviar_mensagem(f'⚠️ Erro no bot: {e}')
