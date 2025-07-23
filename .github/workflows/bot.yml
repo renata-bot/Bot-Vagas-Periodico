@@ -20,6 +20,24 @@ jobs:
           token: ${{ secrets.PAT_TOKEN }}
           persist-credentials: true
 
+      # ✅ Instalar o Google Chrome
+      - name: Instalar o Google Chrome
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget unzip
+          wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+          sudo apt install -y ./google-chrome-stable_current_amd64.deb
+
+      # ✅ Instalar o ChromeDriver compatível
+      - name: Instalar o ChromeDriver
+        run: |
+          CHROME_VERSION=$(google-chrome --version | grep -oP '\d+\.\d+\.\d+')
+          DRIVER_VERSION=$(curl -s "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_$CHROME_VERSION")
+          wget -N https://chromedriver.storage.googleapis.com/$DRIVER_VERSION/chromedriver_linux64.zip
+          unzip chromedriver_linux64.zip
+          chmod +x chromedriver
+          sudo mv chromedriver /usr/local/bin/
+
       - name: Configurar Python
         uses: actions/setup-python@v4
         with:
