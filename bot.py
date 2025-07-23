@@ -2,6 +2,7 @@ import requests
 import os
 from datetime import datetime
 from telegram import Bot
+from bs4 import BeautifulSoup
 
 # === CONFIGURAÇÕES ===
 TOKEN = os.getenv('TELEGRAM_TOKEN')
@@ -19,6 +20,21 @@ URLS = [
     "https://portal.api.gupy.io/api/v1/jobs?careerPageName=Grupo%20Botic%C3%A1rio&jobName=coordenadora&limit=100&offset=0&workplaceType=remote"
 ]
 
+def pegar_titulo_vaga(url):
+    try:
+        resp = requests.get(url)
+        resp.raise_for_status()
+        soup = BeautifulSoup(resp.text, 'html.parser')
+        h1 = soup.find('h1', class_='jumbotron__title')
+        if h1:
+            return h1.text.strip()
+        else:
+            print(f"⚠️ Título não encontrado na página: {url}")
+            return None
+    except Exception as e:
+        print(f"❌ Erro ao buscar título da vaga {url}: {e}")
+        return None
+
 def buscar_vagas_remotas():
     vagas_encontradas = set()
     for url in URLS:
@@ -30,12 +46,11 @@ def buscar_vagas_remotas():
             vagas = dados.get('data', [])
             print(f"📌 {len(vagas)} vagas encontradas nesta URL")
             for vaga in vagas:
-                titulo = vaga.get('title', '').strip()
-                link = vaga.get('jobUrl') or vaga.get('url') or ''
-                link = link.strip()
-                print(f"Debug vaga: title='{titulo}', link='{link}'")  # Debug para checar
-                if titulo and link:
-                    vagas_encontradas.add(f"{titulo} | {link}")
+                link = vaga.get('jobUrl', '').strip()
+                if link:
+                    titulo = pegar_titulo_vaga(link)
+                    if titulo:
+                        vagas_encontradas.add(f"{titulo} | {link}")
         except Exception as e:
             print(f"❌ Erro ao buscar vagas em {url}: {e}")
     return vagas_encontradas
