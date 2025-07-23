@@ -14,14 +14,18 @@ URLS = [
     "https://portal.api.gupy.io/api/v1/jobs?careerPageName=Grupo%20Botic%C3%A1rio&jobName=product&limit=100&offset=0&workplaceType=remote",
     "https://portal.api.gupy.io/api/v1/jobs?careerPageName=Grupo%20Botic%C3%A1rio&jobName=marketing&limit=100&offset=0&workplaceType=remote",
     "https://portal.api.gupy.io/api/v1/jobs?careerPageName=Grupo%20Botic%C3%A1rio&jobName=gerente&limit=100&offset=0&workplaceType=remote",
-    "https://portal.api.gupy.io/api/v1/jobs?careerPageName=Grupo%20Botic%C3%A1rio&jobName=coordenadora&limit=100&offset=0&workplaceType=remote",
+    "https://portal.api.gupy.io/api/v1/jobs?careerPageName=Grupo%20Botic%C3%A1rio&jobName=coordenadora&limit=100&offset=0&workplaceType=remote"
 ]
 
 def enviar_mensagem(texto):
     url = f'https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage'
-    payload = {'chat_id': CHAT_ID, 'text': texto, 'parse_mode': 'HTML'}
+    payload = {
+        'chat_id': CHAT_ID,
+        'text': texto,
+        'parse_mode': 'HTML'
+    }
     response = requests.post(url, data=payload)
-    print(f'Mensagem enviada com status {response.status_code}')
+    print(f'📤 Mensagem enviada com status {response.status_code}')
     print(response.text)
 
 def carregar_estado_anterior():
@@ -40,17 +44,21 @@ def buscar_vagas_remotas():
 
     for url in URLS:
         try:
+            print(f'🔎 Consultando: {url}')
             resposta = requests.get(url)
             resposta.raise_for_status()
             dados = resposta.json()
-            for vaga in dados.get('data', []):
+            vagas = dados.get('data', [])
+            print(f'📌 {len(vagas)} vagas encontradas nesta URL')
+            for vaga in vagas:
                 titulo = vaga.get('title', '').strip()
                 link = vaga.get('jobUrl', '').strip()
                 if titulo and link:
                     vagas_encontradas.add(f'{titulo} | {link}')
         except Exception as e:
-            print(f"Erro ao buscar vagas em {url}: {e}")
+            print(f"⚠️ Erro ao buscar vagas em {url}: {e}")
 
+    print(f'✅ Total de vagas únicas encontradas: {len(vagas_encontradas)}')
     return sorted(vagas_encontradas)
 
 def verificar_novas_vagas():
@@ -65,11 +73,14 @@ def verificar_novas_vagas():
         enviar_mensagem(mensagem)
         salvar_estado_atual(vagas_atuais)
     else:
-        print('Nenhuma nova vaga encontrada.')
+        print('ℹ️ Nenhuma nova vaga remota detectada.')
+        enviar_mensagem('ℹ️ Nenhuma nova vaga remota detectada no Boticário.')
 
 if __name__ == '__main__':
     enviar_mensagem('🤖 Bot iniciado e verificando novas vagas...')
     try:
         verificar_novas_vagas()
     except Exception as e:
-        enviar_mensagem(f'⚠️ Erro no bot: {e}')
+        erro = f'⚠️ Erro no bot: {e}'
+        print(erro)
+        enviar_mensagem(erro)
