@@ -43,6 +43,6 @@ jobs:
 
       - name: Commit e push do histórico
         run: |
-          git add ultimo_estado.txt
-          git commit -m "update estado" || echo "Sem alterações para commitar"
+          git add historico_vagas.json
+          git commit -m "update histórico de vagas" || echo "Sem alterações para commitar"
           git push https://${{ secrets.PAT_TOKEN }}@github.com/renata-bot/Bot-Vagas-Periodico.git
