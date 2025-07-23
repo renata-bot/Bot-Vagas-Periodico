@@ -5,8 +5,8 @@ from datetime import datetime
 from telegram import Bot
 
 # === CONFIGURAÇÕES ===
-TOKEN = 'SEU_TOKEN_AQUI'
-CHAT_ID = 'SEU_CHAT_ID_AQUI'
+TOKEN = os.getenv('TELEGRAM_TOKEN')
+CHAT_ID = os.getenv('CHAT_ID')
 ESTADO_PATH = 'ultimo_estado.txt'
 
 URLS = [
